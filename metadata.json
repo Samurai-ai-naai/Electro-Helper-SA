@@ -1,0 +1,8 @@
+{
+  "name": "ElectroAssistant SA: Field Master",
+  "description": "Premier South African Electrical & HVAC-R Engineering Suite compliant with SANS 10142-1/2/3. Features cable sizing, domestic CoC audit, DB phase balancer, pinout library, field diagnostics, and building plan symbols.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
