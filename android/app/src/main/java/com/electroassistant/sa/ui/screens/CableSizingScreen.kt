@@ -123,6 +123,14 @@ fun CableSizingScreen() {
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Recommended MCB: ${result.recommendedMcbRatingAmps}A", fontSize = 12.sp, color = Color(0xFFFBBF24), fontWeight = FontWeight.Bold)
+                            Text("Min Earth: ${if (result.selectedCableSizeMm2 <= 16) result.selectedCableSizeMm2 else 16.0} mm² Cu", fontSize = 12.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -173,6 +181,14 @@ fun CableSizingScreen() {
                             value = lengthMeters.toFloat(),
                             onValueChange = { lengthMeters = it.toDouble() },
                             valueRange = 5f..150f
+                        )
+
+                        // Power Factor
+                        Text("Power Factor: %.2f".format(powerFactor), fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        Slider(
+                            value = powerFactor.toFloat(),
+                            onValueChange = { powerFactor = it.toDouble() },
+                            valueRange = 0.70f..1.00f
                         )
                     }
                 }
