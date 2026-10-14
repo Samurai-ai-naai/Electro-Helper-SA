@@ -87,7 +87,9 @@ data class CableSizingResult(
     val recommendedMcbRatingAmps: Int,
     val isOvercurrentCoordinated: Boolean,
     val sansClauses: List<String>,
-    val evaluatedOptions: List<EvaluatedCableOption>
+    val evaluatedOptions: List<EvaluatedCableOption>,
+    val appliedCtFactor: Double = deratingFactorCt,
+    val appliedCgFactor: Double = deratingFactorCg
 )
 
 object SANS10142Calculator {

@@ -304,7 +304,7 @@ fun CableSizingScreen() {
                         // Ambient Temperature Ct
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Ambient Temp (Ct): ${ambientTemp.toInt()}°C", fontSize = 12.sp, color = Color(0xFFE2E8F0))
-                            Text("Ct Factor: %.2f".format(result.appliedCtFactor), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
+                            Text("Ct Factor: %.2f".format(result.deratingFactorCt), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
                         }
                         Slider(
                             value = ambientTemp.toFloat().coerceIn(20f, 55f),
@@ -316,7 +316,7 @@ fun CableSizingScreen() {
                         // Grouping Circuits Cg
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Bundled Circuits (Cg): $groupingCount", fontSize = 12.sp, color = Color(0xFFE2E8F0))
-                            Text("Cg Factor: %.2f".format(result.appliedCgFactor), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
+                            Text("Cg Factor: %.2f".format(result.deratingFactorCg), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
                         }
                         Slider(
                             value = groupingCount.toFloat(),
