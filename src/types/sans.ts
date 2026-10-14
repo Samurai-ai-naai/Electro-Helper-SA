@@ -77,7 +77,7 @@ export interface CoCTestReading {
 
 export interface PinoutDiagram {
   id: string;
-  category: 'hvac' | 'relays_starters' | 'comms_power';
+  category: 'av_computing' | 'data_telecom' | 'hvac' | 'relays_starters' | 'comms_power';
   title: string;
   subtitle: string;
   manufacturer?: string;

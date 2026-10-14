@@ -43,7 +43,7 @@ jobs:
           if [ -d "./android" ]; then
             cd android
           fi
-          if [ ! -f "gradlew" ]; then
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
             gradle wrapper --gradle-version 8.5
           fi
           chmod +x ./gradlew || true
