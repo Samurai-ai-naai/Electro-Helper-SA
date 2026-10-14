@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   ArrowRight,
   Calculator,
+  Zap,
 } from 'lucide-react';
 
 export const DiagnosticScreen: React.FC = () => {
@@ -59,74 +60,69 @@ export const DiagnosticScreen: React.FC = () => {
             <span>On-Site Systematic Fault Isolation Trees</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Field Diagnostic Decision Trees
+            HVAC-R & Electrical Diagnostics
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Step-by-step troubleshooting for tripping ELCBs, locked compressors, and floating neutrals.
+            Clause-compliant interactive troubleshooting flowcharts for nuisance trips, compressor lockups, and solar islanding.
           </p>
         </div>
-        {stepHistory.length > 1 && (
-          <button
-            onClick={handleRestartTree}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-white bg-slate-900 rounded-xl border border-slate-800 transition-colors self-start sm:self-center"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Restart Diagnostics</span>
-          </button>
-        )}
+
+        {/* Tree Restart Button */}
+        <button
+          onClick={handleRestartTree}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-xs text-slate-300 font-semibold self-start sm:self-auto transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Restart Tree</span>
+        </button>
       </div>
 
-      {/* Decision Tree Selector Tabs */}
-      <div>
-        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-          Select Field Symptom
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {DIAGNOSTIC_TREES.map((tree) => {
-            const isSelected = tree.id === selectedTreeId;
-            return (
-              <button
-                key={tree.id}
-                onClick={() => handleSelectTree(tree.id)}
-                className={`text-left p-3.5 rounded-xl border transition-all ${
-                  isSelected
-                    ? 'bg-amber-950/40 border-amber-500/70 text-white shadow-sm'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white block">{tree.title}</span>
-                  <span className="text-[10px] uppercase font-mono text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded">
-                    {tree.category}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">{tree.subtitle}</p>
-              </button>
-            );
-          })}
-        </div>
+      {/* Tree Category Switcher */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {DIAGNOSTIC_TREES.map((tree) => {
+          const isSelected = selectedTreeId === tree.id;
+          return (
+            <button
+              key={tree.id}
+              onClick={() => handleSelectTree(tree.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                isSelected
+                  ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <span className="block text-[10px] uppercase font-bold tracking-wider opacity-75">
+                {tree.category}
+              </span>
+              <span>{tree.title}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Active Step Card */}
+      {/* Active Node Viewport */}
       <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4">
-        {/* Step Progress & Title */}
+        {/* Step Indicator Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <span className="text-xs font-mono text-amber-400 font-bold uppercase">
-              Step {currentNode.stepNumber} of Diagnostic Sequence
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-sky-950 text-sky-400 border border-sky-800 font-mono text-xs font-bold">
+              Step {currentNode.stepNumber}
             </span>
-            <h2 className="text-lg font-bold text-white mt-0.5">{currentNode.title}</h2>
+            <h2 className="text-sm sm:text-base font-bold text-white">
+              {currentNode.title}
+            </h2>
           </div>
-          <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-            Path Depth: {stepHistory.length}
+          <span className="text-[11px] text-slate-400 font-medium">
+            Path depth: {stepHistory.length}
           </span>
         </div>
 
-        {/* Procedure & Multimeter Settings */}
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+        {/* Inspection Instruction */}
+        <div className="space-y-3">
           <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
             {currentNode.instruction}
           </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
             {currentNode.multimeterSetting && (
               <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex items-center gap-2">
@@ -296,6 +292,144 @@ export const DiagnosticScreen: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {/* Interactive Tool: HVAC Compressor Winding Validator (C-R-S) */}
+      <CompressorWindingValidator />
+
+      {/* Interactive Tool: 50Hz RSA Capacitor Microfarad Tester */}
+      <CapacitorMicrofaradTester />
+    </div>
+  );
+};
+
+const CompressorWindingValidator: React.FC = () => {
+  const [rcr, setRcr] = useState<number>(3.2);
+  const [rcs, setRcs] = useState<number>(6.8);
+  const [rrs, setRrs] = useState<number>(10.0);
+
+  const expectedRrs = rcr + rcs;
+  const diffPercent = rrs > 0 ? (Math.abs(rrs - expectedRrs) / rrs) * 100 : 0;
+  const isWindingPass = diffPercent <= 5.0 && rcs > rcr;
+
+  return (
+    <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <Zap className="w-4 h-4 text-sky-400" />
+            <span>Single-Phase HVAC Compressor Winding Resistance Tester (C-R-S)</span>
+          </h3>
+          <p className="text-xs text-slate-400">
+            SANS / Field Diagnostic Rule: R(Common-Run) + R(Common-Start) must equal R(Run-Start) within ±5%, and R(CS) &gt; R(CR).
+          </p>
+        </div>
+        <span
+          className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg ${
+            isWindingPass
+              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+              : 'bg-rose-950 text-rose-400 border border-rose-800'
+          }`}
+        >
+          {isWindingPass ? '✓ WINDINGS BALANCED & HEALTHY' : '⚠ WINDING DEFECT DETECTED'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div>
+          <label className="text-slate-400 mb-1 block font-medium">Common to Run R(CR) [Ω]</label>
+          <input
+            type="number"
+            step="0.1"
+            value={rcr}
+            onChange={(e) => setRcr(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold"
+          />
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Run winding (lower resistance)</span>
+        </div>
+        <div>
+          <label className="text-slate-400 mb-1 block font-medium">Common to Start R(CS) [Ω]</label>
+          <input
+            type="number"
+            step="0.1"
+            value={rcs}
+            onChange={(e) => setRcs(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold"
+          />
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Start winding (higher resistance)</span>
+        </div>
+        <div>
+          <label className="text-slate-400 mb-1 block font-medium">Run to Start R(RS) [Ω]</label>
+          <input
+            type="number"
+            step="0.1"
+            value={rrs}
+            onChange={(e) => setRrs(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold"
+          />
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Total series resistance</span>
+        </div>
+      </div>
+
+      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <span>Calculated Sum R(CR) + R(CS): <strong className="text-white font-mono">{expectedRrs.toFixed(1)} Ω</strong> (Measured: <strong className="text-white font-mono">{rrs.toFixed(1)} Ω</strong>)</span>
+        <span>Deviation: <strong className={diffPercent <= 5 ? 'text-emerald-400' : 'text-rose-400'}>{diffPercent.toFixed(1)}%</strong></span>
+        <span className="text-[11px] text-slate-400">Remember to test each pin to ground casing with 500V DC (&gt;5 MΩ required)</span>
+      </div>
+    </div>
+  );
+};
+
+const CapacitorMicrofaradTester: React.FC = () => {
+  const [volts, setVolts] = useState<number>(230);
+  const [amps, setAmps] = useState<number>(2.6);
+
+  // South African 50Hz grid formula: C (uF) = (I * 2650) / V
+  const calcUf = volts > 0 ? (amps * 2650) / volts : 0;
+
+  return (
+    <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>50Hz Single-Phase Run/Start Capacitor Microfarad Tester</span>
+          </h3>
+          <p className="text-xs text-slate-400">
+            Active under-load test formula for 50Hz RSA system: C (µF) = (I × 2650) / V.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Calculated Capacitance:</span>
+          <span className="text-base font-black font-mono px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-lg">
+            {calcUf.toFixed(1)} µF
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div>
+          <label className="text-slate-400 mb-1 block font-medium">Measured AC Voltage Across Capacitor (V)</label>
+          <input
+            type="number"
+            value={volts}
+            onChange={(e) => setVolts(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold"
+          />
+        </div>
+        <div>
+          <label className="text-slate-400 mb-1 block font-medium">Measured Current Through Capacitor Lead (A)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={amps}
+            onChange={(e) => setAmps(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">
+        Tip: Compare calculated µF against the capacitor label rating. If the value has dropped by more than ±5%, replace the capacitor to avoid compressor motor overheating and starting torque failure.
+      </p>
     </div>
   );
 };

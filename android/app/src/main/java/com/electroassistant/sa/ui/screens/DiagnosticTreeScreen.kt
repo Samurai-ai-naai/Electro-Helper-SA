@@ -5,11 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
@@ -124,12 +126,13 @@ fun DiagnosticTreeScreen() {
                     "el_branch_test" to DiagnosticNode(
                         id = "el_branch_test",
                         stepNumber = 2,
-                        title = "Sequential Branch Circuit Re-Engagement",
-                        instruction = "Keep ELCB engaged. Slowly turn ON branch breakers one by one with a 3-second pause between each: Lights, Plugs, Geyser, Stove, Aircon, Pool Pump.",
-                        meterSetting = "Visual & Auditory feedback",
+                        title = "Branch Circuit Sequential Re-engagement",
+                        instruction = "With ELCB ON, flip sub-breakers ON one at a time with a 2-second delay between each. Note which specific circuit breaker immediately trips the ELCB.",
+                        meterSetting = "Visual observation",
+                        expectedReading = "Identify the single faulty branch circuit breaker.",
                         options = listOf(
                             DiagnosticOption(
-                                label = "ELCB trips instantly on Geyser or Stove circuit",
+                                label = "Trips immediately when flipping Geyser / Stove circuit",
                                 summary = "Heating element insulation breakdown caused by scale and thermal fatigue.",
                                 isResolution = true,
                                 resolutionType = "action_required",
@@ -248,22 +251,20 @@ fun DiagnosticTreeScreen() {
                                 resolutionType = "fail",
                                 remedySteps = listOf(
                                     "Enable 'Signal Island Mode' or 'Ground Relay' in inverter firmware settings (Sunsynk / Deye / Victron).",
-                                    "In island mode, an automatic bonding relay must bridge Inverter Output Neutral to Earth.",
-                                    "When grid returns, the bonding relay must automatically disengage.",
-                                    "Test 30mA RCD trip button on socket circuit while running on battery power."
+                                    "If the inverter lacks an internal relay, install an external AC contactor interlocked with grid presence to connect Neutral to Earth only during islanding."
                                 ),
-                                sansRef = "SANS 10142-1:2020 Annexure S & SANS 10142-2"
+                                sansRef = "SANS 10142-1 Annex S & NRS 097-2-1"
                             ),
                             DiagnosticOption(
-                                label = "Downstream ELCB trips instantly when grid disconnects",
-                                summary = "Shared neutral conflict between Essential and Non-Essential DB circuits.",
+                                label = "Neutral-to-Earth measures < 2.0V AC (Solid Earth Reference)",
+                                summary = "Bonding contactor is functioning correctly.",
                                 isResolution = true,
-                                resolutionType = "action_required",
+                                resolutionType = "pass",
                                 remedySteps = listOf(
-                                    "Separate the DB into two isolated sections with separate neutral bars for grid and inverter.",
-                                    "Ensure essential circuits do NOT share a neutral bar with non-essential grid circuits."
+                                    "Verify that earth continuity to the main earth electrode is <= 0.20 Ω.",
+                                    "Ensure all solar PV panels and mounting rails are bonded with minimum 6mm² copper earth conductor."
                                 ),
-                                sansRef = "SANS 10142-1 Clause 6.1.4 & Clause 7.12"
+                                sansRef = "SANS 10142-2 Section 7"
                             )
                         )
                     )
@@ -272,26 +273,28 @@ fun DiagnosticTreeScreen() {
         )
     }
 
-    var selectedTreeIndex by remember { mutableStateOf(0) }
-    val currentTree = diagnosticTrees[selectedTreeIndex]
-    var currentNodeId by remember { mutableStateOf(currentTree.rootNodeId) }
-    var stepHistory by remember { mutableStateOf(listOf(currentTree.rootNodeId)) }
+    var selectedTreeId by remember { mutableStateOf("earth_leakage") }
+    val currentTree = diagnosticTrees.firstOrNull { it.id == selectedTreeId } ?: diagnosticTrees.first()
+    var currentNodeId by remember(selectedTreeId) { mutableStateOf(currentTree.rootNodeId) }
+    var stepHistory by remember(selectedTreeId) { mutableStateOf(listOf(currentTree.rootNodeId)) }
+    val currentNode = currentTree.nodes[currentNodeId] ?: currentTree.nodes.values.first()
 
-    // Three-Phase Unbalance Calculator State
-    var v12 by remember { mutableStateOf(402.0) }
-    var v23 by remember { mutableStateOf(394.0) }
-    var v31 by remember { mutableStateOf(400.0) }
-    val vAvg = (v12 + v23 + v31) / 3.0
-    val maxDev = max(abs(v12 - vAvg), max(abs(v23 - vAvg), abs(v31 - vAvg)))
+    // 3-Phase Voltage Unbalance State
+    var v1Text by remember { mutableStateOf("232") }
+    var v2Text by remember { mutableStateOf("228") }
+    var v3Text by remember { mutableStateOf("219") }
+    val v1 = v1Text.toDoubleOrNull() ?: 232.0
+    val v2 = v2Text.toDoubleOrNull() ?: 228.0
+    val v3 = v3Text.toDoubleOrNull() ?: 219.0
+    val vAvg = (v1 + v2 + v3) / 3.0
+    val maxDev = max(abs(v1 - vAvg), max(abs(v2 - vAvg), abs(v3 - vAvg)))
     val unbalancePercent = if (vAvg > 0) (maxDev / vAvg) * 100.0 else 0.0
     val isUnbalanceAlert = unbalancePercent > 2.0
-
-    val currentNode = currentTree.nodes[currentNodeId] ?: currentTree.nodes.values.first()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Field Diagnostic Decision Trees", fontWeight = FontWeight.Bold) },
+                title = { Text("Field Diagnostics & Motor Tools", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF0F172A),
                     titleContentColor = Color.White
@@ -304,57 +307,51 @@ fun DiagnosticTreeScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Tree Selector Chips
+            // Category Selectors
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    diagnosticTrees.forEachIndexed { index, tree ->
+                    diagnosticTrees.forEach { tree ->
                         FilterChip(
-                            selected = selectedTreeIndex == index,
+                            selected = selectedTreeId == tree.id,
                             onClick = {
-                                selectedTreeIndex = index
+                                selectedTreeId = tree.id
                                 currentNodeId = tree.rootNodeId
                                 stepHistory = listOf(tree.rootNodeId)
                             },
-                            label = { Text(tree.category, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF0284C7),
-                                selectedLabelColor = Color.White,
-                                containerColor = Color(0xFF1E293B),
-                                labelColor = Color(0xFF94A3B8)
-                            )
+                            label = { Text(tree.category, fontSize = 11.sp) }
                         )
                     }
                 }
             }
 
-            // Tree Title Card
+            // Current Tree Header Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(currentTree.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-                        Text(currentTree.subtitle, color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(currentTree.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                        Text(currentTree.subtitle, color = Color(0xFF94A3B8), fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
                     }
                 }
             }
 
-            // Active Step Card
+            // Current Step Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF111827)),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
@@ -371,17 +368,13 @@ fun DiagnosticTreeScreen() {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(currentNode.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
                         }
-
                         Text(currentNode.instruction, color = Color(0xFFE2E8F0), fontSize = 13.sp, lineHeight = 18.sp)
-
                         currentNode.meterSetting?.let {
                             Text("Meter Mode: $it", color = Color(0xFF38BDF8), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                         }
-
                         currentNode.expectedReading?.let {
                             Text("Baseline: $it", color = Color(0xFF34D399), fontSize = 11.sp)
                         }
-
                         currentNode.safetyWarning?.let {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -409,7 +402,6 @@ fun DiagnosticTreeScreen() {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(opt.label, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                         Text(opt.summary, color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.padding(vertical = 4.dp))
-
                         if (opt.isResolution) {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -478,6 +470,117 @@ fun DiagnosticTreeScreen() {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Restart Decision Tree", fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // Interactive Tool: Compressor Terminal Resistance Checker (Common, Run, Start)
+            item {
+                var rcrText by remember { mutableStateOf("3.2") }
+                var rcsText by remember { mutableStateOf("6.8") }
+                var rrsText by remember { mutableStateOf("10.0") }
+                val rcr = rcrText.toDoubleOrNull() ?: 3.2
+                val rcs = rcsText.toDoubleOrNull() ?: 6.8
+                val rrs = rrsText.toDoubleOrNull() ?: 10.0
+                val expectedRrs = rcr + rcs
+                val diffPercent = if (rrs > 0) abs(rrs - expectedRrs) / rrs * 100.0 else 0.0
+                val isWindingBalanced = diffPercent <= 5.0 && rcs > rcr
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("HVAC Compressor Winding Tester (C-R-S)", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 13.sp)
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isWindingBalanced) Color(0xFF064E3B) else Color(0xFF7F1D1D)
+                            ) {
+                                Text(
+                                    if (isWindingBalanced) "WINDINGS PASS" else "WINDING FAULT",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = if (isWindingBalanced) Color(0xFF34D399) else Color(0xFFF87171),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Text("Rule: R(CR) + R(CS) = R(RS) and R(CS) > R(CR)", fontSize = 11.sp, color = Color(0xFF94A3B8), fontFamily = FontFamily.Monospace)
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = rcrText,
+                                onValueChange = { rcrText = it },
+                                label = { Text("R(CR) Run Ω") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = rcsText,
+                                onValueChange = { rcsText = it },
+                                label = { Text("R(CS) Start Ω") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = rrsText,
+                                onValueChange = { rrsText = it },
+                                label = { Text("R(RS) Total Ω") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Text(
+                            if (isWindingBalanced)
+                                "Healthy Single-Phase Compressor Motor: Run Winding (%.1f Ω) + Start Winding (%.1f Ω) = %.1f Ω (Measured: %.1f Ω, Deviation: %.1f%%)".format(rcr, rcs, expectedRrs, rrs, diffPercent)
+                            else
+                                "Defect Detected: Windings deviate by %.1f%% or Start (%.1f Ω) <= Run (%.1f Ω). Possible turn-to-turn short or damaged winding!".format(diffPercent, rcs, rcr),
+                            color = if (isWindingBalanced) Color(0xFF34D399) else Color(0xFFF87171),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            // Interactive Tool: 50Hz RSA Capacitor Microfarad Tester
+            item {
+                var capVoltageText by remember { mutableStateOf("230") }
+                var capCurrentText by remember { mutableStateOf("2.6") }
+                val vCap = capVoltageText.toDoubleOrNull() ?: 230.0
+                val iCap = capCurrentText.toDoubleOrNull() ?: 2.6
+                // RSA 50Hz: C (uF) = (I * 2650) / V
+                val calcUf = if (vCap > 0) (iCap * 2650.0) / vCap else 0.0
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("50Hz Capacitor Tester [C = (I × 2650) / V]", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 13.sp)
+                            Text("%.1f µF".format(calcUf), fontWeight = FontWeight.Black, color = Color(0xFFFBBF24), fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = capVoltageText,
+                                onValueChange = { capVoltageText = it },
+                                label = { Text("Capacitor Volts (V)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = capCurrentText,
+                                onValueChange = { capCurrentText = it },
+                                label = { Text("Capacitor Amps (A)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Text("Calculated Capacitance: %.1f µF at 50Hz. Compare with capacitor label rating (±5% tolerance).".format(calcUf), fontSize = 11.sp, color = Color(0xFF94A3B8))
                     }
                 }
             }

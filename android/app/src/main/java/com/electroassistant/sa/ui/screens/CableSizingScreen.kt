@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.electroassistant.sa.calculator.*
@@ -22,9 +24,11 @@ import com.electroassistant.sa.calculator.*
 @Composable
 fun CableSizingScreen() {
     var supplyType by remember { mutableStateOf(SupplyType.SINGLE_PHASE) }
-    var loadWatts by remember { mutableStateOf(3000.0) }
-    var lengthMeters by remember { mutableStateOf(20.0) }
-    var powerFactor by remember { mutableStateOf(0.85) }
+    var loadWatts by remember { mutableStateOf(3500.0) }
+    var loadWattsText by remember { mutableStateOf("3.5") }
+    var lengthMeters by remember { mutableStateOf(25.0) }
+    var lengthMetersText by remember { mutableStateOf("25") }
+    var powerFactor by remember { mutableStateOf(0.90) }
     var installationMethod by remember { mutableStateOf(InstallationMethod.CONDUIT_SURFACE_TRUNKING) }
     var insulationType by remember { mutableStateOf(InsulationType.PVC_70) }
     var ambientTemp by remember { mutableStateOf(30.0) }
@@ -51,7 +55,7 @@ fun CableSizingScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SANS 10142 Cable Sizing", fontWeight = FontWeight.Bold) },
+                title = { Text("SANS 10142 Cable Sizing Engine", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF0F172A),
                     titleContentColor = Color.White
@@ -64,66 +68,107 @@ fun CableSizingScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Recommendation Card
+            // Recommendation Hero Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (result.isVoltageDropCompliant) Color(0xFF1E293B) else Color(0xFF450A0A)
+                    ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "RECOMMENDED COPPER CABLE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF38BDF8)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "RECOMMENDED COPPER CABLE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF38BDF8)
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (result.isVoltageDropCompliant) Color(0xFF064E3B) else Color(0xFF7F1D1D)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        if (result.isVoltageDropCompliant) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = if (result.isVoltageDropCompliant) Color(0xFF34D399) else Color(0xFFF87171),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        if (result.isVoltageDropCompliant) "SANS PASS (≤5%)" else "VOLT DROP FAIL (>5%)",
+                                        color = if (result.isVoltageDropCompliant) Color(0xFF34D399) else Color(0xFFF87171),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
                         Row(
                             verticalAlignment = Alignment.Bottom,
                             modifier = Modifier.padding(vertical = 4.dp)
                         ) {
                             Text(
                                 text = "${result.selectedCableSizeMm2}",
-                                fontSize = 42.sp,
+                                fontSize = 44.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color.White,
                                 fontFamily = FontFamily.Monospace
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "mm²",
+                                text = "mm² Cu",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8)
+                                color = Color(0xFF38BDF8),
+                                modifier = Modifier.padding(bottom = 6.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Engineering Metrics Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Design Current (Ib)", fontSize = 11.sp, color = Color(0xFF94A3B8))
-                                Text("%.1f A".format(result.designCurrentIb), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Design (Ib)", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                                Text("%.1f A".format(result.designCurrentIb), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = FontFamily.Monospace)
                             }
                             Column {
-                                Text("Derated Capacity (Iz)", fontSize = 11.sp, color = Color(0xFF94A3B8))
-                                Text("%.1f A".format(result.cableDeratedCapacityAmps), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+                                Text("Derated (Iz)", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                                Text("%.1f A".format(result.cableDeratedCapacityAmps), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
                             }
                             Column {
-                                Text("Volt Drop (ΔV)", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                                Text("Volt Drop (ΔV)", fontSize = 10.sp, color = Color(0xFF94A3B8))
                                 Text(
-                                    "%.1f V (%.1f%%)".format(result.voltageDropVolts, result.voltageDropPercent),
-                                    fontSize = 15.sp,
+                                    "%.2f V (%.1f%%)".format(result.voltageDropVolts, result.voltageDropPercent),
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (result.isVoltageDropCompliant) Color(0xFF34D399) else Color(0xFFF87171)
+                                    color = if (result.isVoltageDropCompliant) Color(0xFF34D399) else Color(0xFFF87171),
+                                    fontFamily = FontFamily.Monospace
                                 )
                             }
                         }
+
                         Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = Color(0xFF334155))
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -135,60 +180,149 @@ fun CableSizingScreen() {
                 }
             }
 
-            // Quick Parameters
+            // Interactive Controls Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF111827)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Sizing Inputs", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Circuit Specifications", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
 
                         // Supply Type
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = { supplyType = SupplyType.SINGLE_PHASE },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (supplyType == SupplyType.SINGLE_PHASE) Color(0xFF0284C7) else Color(0xFF1E293B)
+                                    containerColor = if (supplyType == SupplyType.SINGLE_PHASE) Color(0xFF0284C7) else Color(0xFF334155)
                                 ),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("1-Phase 230V", fontSize = 12.sp)
+                                Text("1-Phase (230V AC)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Button(
                                 onClick = { supplyType = SupplyType.THREE_PHASE },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (supplyType == SupplyType.THREE_PHASE) Color(0xFF0284C7) else Color(0xFF1E293B)
+                                    containerColor = if (supplyType == SupplyType.THREE_PHASE) Color(0xFF0284C7) else Color(0xFF334155)
                                 ),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("3-Phase 400V", fontSize = 12.sp)
+                                Text("3-Phase (400V AC)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        // Power Slider
-                        Text("Load Power: ${loadWatts / 1000} kW", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        // Load Power (kW) input and slider
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Load Power: %.1f kW".format(loadWatts / 1000.0), fontSize = 12.sp, color = Color(0xFFE2E8F0))
+                            OutlinedTextField(
+                                value = loadWattsText,
+                                onValueChange = {
+                                    loadWattsText = it
+                                    val kw = it.toDoubleOrNull()
+                                    if (kw != null && kw > 0) loadWatts = kw * 1000.0
+                                },
+                                label = { Text("kW") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.width(90.dp)
+                            )
+                        }
                         Slider(
-                            value = (loadWatts / 1000).toFloat(),
-                            onValueChange = { loadWatts = (it * 1000).toDouble() },
-                            valueRange = 0.5f..50.0f
+                            value = (loadWatts / 1000.0).toFloat().coerceIn(0.5f, 60.0f),
+                            onValueChange = {
+                                loadWatts = (it * 1000).toDouble()
+                                loadWattsText = "%.1f".format(it)
+                            },
+                            valueRange = 0.5f..60.0f
                         )
 
-                        // Length Slider
-                        Text("Cable Route Length: ${lengthMeters.toInt()} meters", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        // Route Length (Meters)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Route Length: ${lengthMeters.toInt()} meters", fontSize = 12.sp, color = Color(0xFFE2E8F0))
+                            OutlinedTextField(
+                                value = lengthMetersText,
+                                onValueChange = {
+                                    lengthMetersText = it
+                                    val m = it.toDoubleOrNull()
+                                    if (m != null && m > 0) lengthMeters = m
+                                },
+                                label = { Text("Meters") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier.width(90.dp)
+                            )
+                        }
                         Slider(
-                            value = lengthMeters.toFloat(),
-                            onValueChange = { lengthMeters = it.toDouble() },
+                            value = lengthMeters.toFloat().coerceIn(5f, 150f),
+                            onValueChange = {
+                                lengthMeters = it.toDouble()
+                                lengthMetersText = it.toInt().toString()
+                            },
                             valueRange = 5f..150f
                         )
 
-                        // Power Factor
-                        Text("Power Factor: %.2f".format(powerFactor), fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        // Installation Method Selector
+                        Text("Installation Method:", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                InstallationMethod.CONDUIT_SURFACE_TRUNKING to "Surface Conduit",
+                                InstallationMethod.CONDUIT_INSULATED to "In Thermal Wall",
+                                InstallationMethod.CLIPPED_DIRECT_TRAY to "Clipped / Tray",
+                                InstallationMethod.UNDERGROUND_DUCT to "Underground SWA"
+                            ).forEach { (method, label) ->
+                                FilterChip(
+                                    selected = installationMethod == method,
+                                    onClick = { installationMethod = method },
+                                    label = { Text(label, fontSize = 10.sp) }
+                                )
+                            }
+                        }
+
+                        // Insulation Type
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = insulationType == InsulationType.PVC_70,
+                                onClick = { insulationType = InsulationType.PVC_70 },
+                                label = { Text("70°C Copper PVC", fontSize = 11.sp) }
+                            )
+                            FilterChip(
+                                selected = insulationType == InsulationType.XLPE_90,
+                                onClick = { insulationType = InsulationType.XLPE_90 },
+                                label = { Text("90°C Copper XLPE", fontSize = 11.sp) }
+                            )
+                        }
+
+                        // Ambient Temperature Ct
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Ambient Temp (Ct): ${ambientTemp.toInt()}°C", fontSize = 12.sp, color = Color(0xFFE2E8F0))
+                            Text("Ct Factor: %.2f".format(result.appliedCtFactor), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
+                        }
                         Slider(
-                            value = powerFactor.toFloat(),
-                            onValueChange = { powerFactor = it.toDouble() },
-                            valueRange = 0.70f..1.00f
+                            value = ambientTemp.toFloat().coerceIn(20f, 55f),
+                            onValueChange = { ambientTemp = it.toDouble() },
+                            valueRange = 20f..55f,
+                            steps = 6
+                        )
+
+                        // Grouping Circuits Cg
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Bundled Circuits (Cg): $groupingCount", fontSize = 12.sp, color = Color(0xFFE2E8F0))
+                            Text("Cg Factor: %.2f".format(result.appliedCgFactor), fontSize = 12.sp, color = Color(0xFF38BDF8), fontFamily = FontFamily.Monospace)
+                        }
+                        Slider(
+                            value = groupingCount.toFloat(),
+                            onValueChange = { groupingCount = it.toInt() },
+                            valueRange = 1f..10f,
+                            steps = 8
                         )
                     }
                 }
