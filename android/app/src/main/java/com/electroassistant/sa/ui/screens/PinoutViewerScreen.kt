@@ -66,8 +66,8 @@ fun PinoutViewerScreen() {
                 id = "hard_start_521",
                 category = "Relays & Starters",
                 title = "5-2-1 Compressor Hard-Start Kit",
-                subtitle: "Potential Relay & Dual Capacitor Wiring",
-                manufacturer: "Universal",
+                subtitle = "Potential Relay & Dual Capacitor Wiring",
+                manufacturer = "Universal",
                 terminals = listOf(
                     TerminalItem("Pin 1", "Relay Contact", "Connects to Start Capacitor with bleed resistor", "370V AC", "Black"),
                     TerminalItem("Pin 2", "Relay Coil / Contact", "Connects to Compressor START (S) and Run Cap HERM", "Back-EMF", "Yellow"),
