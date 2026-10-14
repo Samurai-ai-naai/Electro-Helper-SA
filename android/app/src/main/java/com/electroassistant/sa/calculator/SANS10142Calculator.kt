@@ -2,6 +2,12 @@ package com.electroassistant.sa.calculator
 
 import kotlin.math.sqrt
 import kotlin.math.roundToInt
+import kotlin.math.acos
+import kotlin.math.tan
+import kotlin.math.PI
+import kotlin.math.pow
+import kotlin.math.abs
+import kotlin.math.max
 
 /**
  * ElectroAssistant SA & HVAC Field Suite
@@ -89,7 +95,8 @@ data class CableSizingResult(
     val sansClauses: List<String>,
     val evaluatedOptions: List<EvaluatedCableOption>,
     val appliedCtFactor: Double = deratingFactorCt,
-    val appliedCgFactor: Double = deratingFactorCg
+    val appliedCgFactor: Double = deratingFactorCg,
+    val recommendedEarthConductorSizeMm2: Double = if (selectedCableSizeMm2 <= 16.0) selectedCableSizeMm2 else if (selectedCableSizeMm2 <= 35.0) 16.0 else selectedCableSizeMm2 / 2.0
 )
 
 object SANS10142Calculator {
@@ -251,4 +258,174 @@ object SANS10142Calculator {
             else -> 0.38
         }
     }
+
+    /**
+     * SANS / HVAC-R Motor Run & Start Capacitor Calculator
+     * Computes required microfarads (uF) and minimum working AC voltage for single-phase compressor/pump motors
+     */
+    fun calculateMotorCapacitor(
+        motorPowerKw: Double,
+        supplyVoltage: Double = 230.0,
+        frequencyHz: Double = 50.0,
+        efficiency: Double = 0.80,
+        powerFactor: Double = 0.85
+    ): MotorCapacitorResult {
+        val powerWatts = motorPowerKw * 1000.0
+        val hp = motorPowerKw * 1.341
+        val fullLoadAmps = powerWatts / (supplyVoltage * efficiency * powerFactor)
+
+        // South African field empirical rule for PSC single-phase motors (50Hz):
+        // C_run (uF) = (P_watts * efficiency * 10^6) / (2 * PI * f * V^2)
+        val runCapUf = (powerWatts * efficiency * 1000000.0) / (2.0 * PI * frequencyHz * supplyVoltage * supplyVoltage)
+        val clampedRunUf = max(5.0, ((runCapUf * 10.0).roundToInt() / 10.0))
+
+        // Start capacitor typically 3x to 5x run capacitor rating
+        val startCapMin = ((clampedRunUf * 3.0).roundToInt() / 5 * 5).toDouble()
+        val startCapMax = ((clampedRunUf * 5.0).roundToInt() / 5 * 5).toDouble()
+
+        // Working voltage rating must be >= 1.35x nominal line voltage for run (continuous)
+        // Usually 400V - 450V AC in South Africa 230V systems
+        val workingVac = if (supplyVoltage <= 240.0) 450 else 600
+
+        return MotorCapacitorResult(
+            motorPowerKw = motorPowerKw,
+            motorPowerHp = ((hp * 100.0).roundToInt() / 100.0),
+            runCapacitanceUf = clampedRunUf,
+            startCapacitanceMinUf = startCapMin,
+            startCapacitanceMaxUf = startCapMax,
+            recommendedWorkingVoltageVac = workingVac,
+            estimatedFullLoadAmps = ((fullLoadAmps * 10.0).roundToInt() / 10.0)
+        )
+    }
+
+    /**
+     * Active/Reactive/Apparent Power and Power Factor Correction Calculator
+     */
+    fun calculatePowerFactorCorrection(
+        activePowerKw: Double,
+        initialCosPhi: Double,
+        targetCosPhi: Double = 0.98,
+        supplyVoltage: Double = 400.0,
+        isThreePhase: Boolean = true,
+        frequencyHz: Double = 50.0
+    ): PowerFactorResult {
+        val cos1 = initialCosPhi.coerceIn(0.40, 0.99)
+        val cos2 = targetCosPhi.coerceIn(cos1, 1.00)
+
+        val tanPhi1 = tan(acos(cos1))
+        val tanPhi2 = tan(acos(cos2))
+
+        val s1 = activePowerKw / cos1
+        val q1 = activePowerKw * tanPhi1
+
+        val s2 = activePowerKw / cos2
+        val q2 = activePowerKw * tanPhi2
+
+        val qc = max(0.0, q1 - q2)
+
+        // Capacitance calculation (uF): Qc in kVAR
+        // For 3-phase Delta: C_phase = (Qc * 10^9) / (3 * 2 * PI * f * V_line^2)
+        // Total capacitance uF:
+        val capUf = if (isThreePhase) {
+            (qc * 1000000000.0) / (3.0 * 2.0 * PI * frequencyHz * supplyVoltage * supplyVoltage)
+        } else {
+            (qc * 1000000000.0) / (2.0 * PI * frequencyHz * supplyVoltage * supplyVoltage)
+        }
+
+        // Current calculations
+        val current1 = if (isThreePhase) {
+            (s1 * 1000.0) / (sqrt(3.0) * supplyVoltage)
+        } else {
+            (s1 * 1000.0) / supplyVoltage
+        }
+
+        val current2 = if (isThreePhase) {
+            (s2 * 1000.0) / (sqrt(3.0) * supplyVoltage)
+        } else {
+            (s2 * 1000.0) / supplyVoltage
+        }
+
+        val savedAmps = max(0.0, current1 - current2)
+
+        return PowerFactorResult(
+            activePowerKw = activePowerKw,
+            initialCosPhi = cos1,
+            targetCosPhi = cos2,
+            initialApparentPowerKva = ((s1 * 10.0).roundToInt() / 10.0),
+            initialReactivePowerKvar = ((q1 * 10.0).roundToInt() / 10.0),
+            targetApparentPowerKva = ((s2 * 10.0).roundToInt() / 10.0),
+            targetReactivePowerKvar = ((q2 * 10.0).roundToInt() / 10.0),
+            requiredCapacitorBankKvar = ((qc * 10.0).roundToInt() / 10.0),
+            requiredCapacitanceUf = ((capUf * 10.0).roundToInt() / 10.0),
+            currentBeforeAmps = ((current1 * 10.0).roundToInt() / 10.0),
+            currentAfterAmps = ((current2 * 10.0).roundToInt() / 10.0),
+            currentSavedAmps = ((savedAmps * 10.0).roundToInt() / 10.0)
+        )
+    }
+
+    /**
+     * Resistor Color Code Decoder (4-band and 5-band)
+     */
+    fun decodeResistor4Band(band1: Int, band2: Int, multiplierExp: Int, tolerancePct: Double): ResistorColorResult {
+        val baseVal = (band1 * 10 + band2).toDouble()
+        val ohms = baseVal * 10.0.pow(multiplierExp.toDouble())
+        return formatResistorResult(ohms, tolerancePct)
+    }
+
+    fun decodeResistor5Band(band1: Int, band2: Int, band3: Int, multiplierExp: Int, tolerancePct: Double): ResistorColorResult {
+        val baseVal = (band1 * 100 + band2 * 10 + band3).toDouble()
+        val ohms = baseVal * 10.0.pow(multiplierExp.toDouble())
+        return formatResistorResult(ohms, tolerancePct)
+    }
+
+    private fun formatResistorResult(ohms: Double, tolerancePct: Double): ResistorColorResult {
+        val formatted = when {
+            ohms >= 1_000_000 -> "%.2f MΩ".format(ohms / 1_000_000)
+            ohms >= 1_000 -> "%.2f kΩ".format(ohms / 1_000)
+            else -> "%.2f Ω".format(ohms)
+        }
+        val minVal = ohms * (1.0 - tolerancePct / 100.0)
+        val maxVal = ohms * (1.0 + tolerancePct / 100.0)
+
+        return ResistorColorResult(
+            resistanceOhms = ohms,
+            formattedResistance = formatted,
+            tolerancePercent = tolerancePct,
+            minResistanceOhms = minVal,
+            maxResistanceOhms = maxVal
+        )
+    }
 }
+
+data class MotorCapacitorResult(
+    val motorPowerKw: Double,
+    val motorPowerHp: Double,
+    val runCapacitanceUf: Double,
+    val startCapacitanceMinUf: Double,
+    val startCapacitanceMaxUf: Double,
+    val recommendedWorkingVoltageVac: Int,
+    val estimatedFullLoadAmps: Double
+)
+
+data class PowerFactorResult(
+    val activePowerKw: Double,
+    val initialCosPhi: Double,
+    val targetCosPhi: Double,
+    val initialApparentPowerKva: Double,
+    val initialReactivePowerKvar: Double,
+    val targetApparentPowerKva: Double,
+    val targetReactivePowerKvar: Double,
+    val requiredCapacitorBankKvar: Double,
+    val requiredCapacitanceUf: Double,
+    val currentBeforeAmps: Double,
+    val currentAfterAmps: Double,
+    val currentSavedAmps: Double
+)
+
+data class ResistorColorResult(
+    val resistanceOhms: Double,
+    val formattedResistance: String,
+    val tolerancePercent: Double,
+    val minResistanceOhms: Double,
+    val maxResistanceOhms: Double
+)

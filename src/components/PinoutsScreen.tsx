@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 
 export const PinoutsScreen: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'hvac' | 'relays_starters' | 'comms_power'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<
+    'all' | 'av_computing' | 'data_telecom' | 'hvac' | 'relays_starters' | 'comms_power'
+  >('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDeviceId, setActiveDeviceId] = useState<string>(PINOUT_DATA[0].id);
   const [highlightedPin, setHighlightedPin] = useState<string | null>(null);
@@ -77,10 +79,12 @@ export const PinoutsScreen: React.FC = () => {
         </div>
         <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
           {[
-            { id: 'all', label: 'All Interfaces' },
-            { id: 'hvac', label: 'HVAC & Cold Room' },
+            { id: 'all', label: 'All' },
+            { id: 'av_computing', label: 'A/V & Display' },
+            { id: 'data_telecom', label: 'Data & Serial' },
+            { id: 'hvac', label: 'HVAC-R Controllers' },
             { id: 'relays_starters', label: 'Relays & Starters' },
-            { id: 'comms_power', label: 'Comms & Inverters' },
+            { id: 'comms_power', label: 'Solar BMS & Inverters' },
           ].map((cat) => (
             <button
               key={cat.id}
